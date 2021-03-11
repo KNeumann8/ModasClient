@@ -81,6 +81,8 @@ $(function () {
       html += "</td>";
       html += "<td>" + get_time(e[i].stamp) + "</td>";
       html += "<td>" + e[i].loc + "</td>";
+      html += "<td class='text-center'>"
+      html += "<i data-id=\"" + e[i].id + "\" class='fas fa-lg fa-trash-alt deleteEventBtn'></i>"
       html += "</tr> ";
     }
     $('tbody').html(html);
@@ -177,7 +179,7 @@ $(function () {
   function showErrors(errors){
     for (var i = 0; i < errors.length; i++){
         // apply bootstrap is-invalid class to any field with errors
-        errors[i].addClass('is-invalid');;
+        errors[i].addClass('is-invalid');
     }
     // shake modal for effect
     $('#signInModal').css('animation-duration', '0.7s')
@@ -206,7 +208,7 @@ $(function () {
     }
     // AJAX to update database
     $.ajax({
-      headers: { "Content-Type": "application/json" },
+      headers: { "Authorization": 'Bearer ' + Cookies.get('token'), "Content-Type": "application/json" },
       url: "https://modas-kvn-spring2021.azurewebsites.net/api/event/" + $(this).data('id'),
       type: 'patch',
       data: JSON.stringify([{ "op": "replace", "path": "Flagged", "value": checked }]),
@@ -252,9 +254,33 @@ $(function () {
     }
   });
 
-  $('#submitButton').on('click', function(e){
-    e.preventDefault();
+  //Delete Event on trash icon click event
+  $('tbody').on('click', '.deleteEventBtn', function () {
+    var id = $(this).data('id');
+    $(this).css("color", "red");
+    //AJAX to delete event
+    $.ajax({
+      //headers: { "Authorization": 'Bearer ' + Cookies.get('token'), "Content-Type": "application/json" },
+      headers: { "Authorization": 'Bearer ' + Cookies.get('token')},
+      url: "https://modas-kvn-spring2021.azurewebsites.net/api/event/" + id,
+      type: 'delete',
+      //data: JSON.stringify([{ "op": "replace", "path": "Flagged", "value": checked }]),
+      success: function () {
+        // Toast
+        toast("Delete Complete", "ID: " + id + " is gone.");
+        //refresh to show update
+        getEvents($('#current').data('val'));
+      },
+      error: function (jqXHR, textStatus, errorThrown) {
+        // log the error to the console
+        console.log("The following error occured: " + jqXHR.status, errorThrown);
+      }
+    });
+  });
 
+
+  function submitLogin(){
+    $(".temp-error").remove(); // remove old error if any 
     // reset any fields marked with errors
     $('.form-control').removeClass('is-invalid');
     // create an empty errors array
@@ -287,8 +313,26 @@ $(function () {
         error: function (jqXHR, textStatus, errorThrown) {
           // log the error to the console
           console.log("The following error occured: " + jqXHR.status, errorThrown);
+          $(".modal-body").append("<p class='temp-error'>"+errorThrown+"</p>");
+          $(".temp-error").css("color","red");
         }
       });
     }
+  }
+
+  $('#submitButton').on('click', function(e){
+    e.preventDefault();
+    //by moving the code that submits the login out of this event
+    //we are able to allow the enter key to also trigger it
+    submitLogin();
   });
+
+  $(document).on('keypress', function(e){
+    //This function runs whenever a key is pressed, the following checks
+    //if it is the enter key and if the signinmodal is showing...
+    if($('#signInModal').hasClass('show') && e.which == 13){
+      submitLogin();
+    }
+  });
+
 });
